@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useContext } from "react";
 import {
   FiPlay,
   FiPause,
   FiRotateCcw,
-  FiClock,
-  FiCoffee,
 } from "react-icons/fi";
+import { sessionsApi } from "../lib/api";
+import { AuthContext } from "../contexts/AuthContext";
 
 const SESSIONS_KEY = "focus_sessions_v1";
 
@@ -16,6 +16,7 @@ function msToTime(totalSeconds) {
 }
 
 export default function FocusSession() {
+  const { user } = useContext(AuthContext);
   const [task, setTask] = useState("");
   const [mode, setMode] = useState("pomodoro");
   const [minutes, setMinutes] = useState(25);
@@ -30,19 +31,29 @@ export default function FocusSession() {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
 
-  function onComplete() {
-    try {
-      const raw = localStorage.getItem(SESSIONS_KEY) || "[]";
-      const sessions = JSON.parse(raw);
-      sessions.unshift({
-        id: Date.now(),
-        task: task || null,
-        minutes,
-        completedAt: new Date().toISOString(),
-      });
-      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-    } catch (e) {
-      console.error("Error saving session:", e);
+  async function onComplete() {
+    if (user?.isGuest) {
+      // Guest mode - use localStorage
+      try {
+        const raw = localStorage.getItem(SESSIONS_KEY) || "[]";
+        const sessions = JSON.parse(raw);
+        sessions.unshift({
+          id: Date.now(),
+          task: task || null,
+          minutes,
+          completedAt: new Date().toISOString(),
+        });
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+      } catch (e) {
+        console.error("Error saving session:", e);
+      }
+    } else if (user) {
+      // Authenticated - use API
+      try {
+        await sessionsApi.create(task || null, minutes);
+      } catch (e) {
+        console.error("Error saving session:", e);
+      }
     }
   }
 
@@ -65,7 +76,7 @@ export default function FocusSession() {
       }, 1000);
     }
     return () => clearInterval(intervalRef.current);
-  }, [running, onComplete]);
+  }, [running]);
 
   function startPause() {
     if (running) setRunning(false);
@@ -92,11 +103,10 @@ export default function FocusSession() {
 
         <div className="flex gap-2 mb-4">
           <button
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              mode === "pomodoro"
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${mode === "pomodoro"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
+              }`}
             onClick={() => {
               setMode("pomodoro");
               setMinutes(25);
@@ -105,11 +115,10 @@ export default function FocusSession() {
             Pomodoro
           </button>
           <button
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              mode === "custom"
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${mode === "custom"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
+              }`}
             onClick={() => setMode("custom")}
           >
             Custom
@@ -118,11 +127,10 @@ export default function FocusSession() {
 
         <div className="flex gap-2">
           <button
-            className={`px-3 py-2 rounded-lg font-medium transition-colors ${
-              minutes === 15 && mode !== "custom"
+            className={`px-3 py-2 rounded-lg font-medium transition-colors ${minutes === 15 && mode !== "custom"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
+              }`}
             onClick={() => {
               setMode("pomodoro");
               setMinutes(15);
@@ -131,11 +139,10 @@ export default function FocusSession() {
             15m
           </button>
           <button
-            className={`px-3 py-2 rounded-lg font-medium transition-colors ${
-              minutes === 25 && mode !== "custom"
+            className={`px-3 py-2 rounded-lg font-medium transition-colors ${minutes === 25 && mode !== "custom"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
+              }`}
             onClick={() => {
               setMode("pomodoro");
               setMinutes(25);
@@ -144,11 +151,10 @@ export default function FocusSession() {
             25m
           </button>
           <button
-            className={`px-3 py-2 rounded-lg font-medium transition-colors ${
-              minutes === 50 && mode !== "custom"
+            className={`px-3 py-2 rounded-lg font-medium transition-colors ${minutes === 50 && mode !== "custom"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
+              }`}
             onClick={() => {
               setMode("pomodoro");
               setMinutes(50);

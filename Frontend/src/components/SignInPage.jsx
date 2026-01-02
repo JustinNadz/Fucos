@@ -14,23 +14,47 @@ import {
 import { AuthContext } from "../contexts/AuthContext";
 
 export default function SignInPage() {
-  const { signIn } = useContext(AuthContext);
+  const { signIn, signUp, guestLogin } = useContext(AuthContext);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from?.pathname || "/";
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password) return;
 
-    const userName = isSignUp ? name : email.split("@")[0];
-    signIn({ name: userName, email: email.trim() });
+    setError("");
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        if (!name.trim()) {
+          setError("Name is required");
+          setLoading(false);
+          return;
+        }
+        await signUp({ name: name.trim(), email: email.trim(), password });
+      } else {
+        await signIn({ email: email.trim(), password });
+      }
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGuestLogin() {
+    await guestLogin();
     navigate(from, { replace: true });
   }
 
@@ -113,6 +137,12 @@ export default function SignInPage() {
             </button>
           </div>
 
+          {error && (
+            <div style={{ color: "#ef4444", marginBottom: "1rem", fontSize: "0.875rem" }}>
+              {error}
+            </div>
+          )}
+
           {isSignUp && (
             <>
               <label className="auth-label">Full Name</label>
@@ -137,6 +167,7 @@ export default function SignInPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               className="auth-input"
+              type="email"
               required
             />
           </div>
@@ -172,8 +203,9 @@ export default function SignInPage() {
             </a>
           </div>
 
-          <button className="auth-submit" type="submit">
-            {isSignUp ? "Create Account" : "Sign in"} <FiArrowRight />
+          <button className="auth-submit" type="submit" disabled={loading}>
+            {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign in"}{" "}
+            {!loading && <FiArrowRight />}
           </button>
 
           <div className="auth-divider">Or</div>
@@ -181,10 +213,7 @@ export default function SignInPage() {
           <button
             type="button"
             className="auth-guest"
-            onClick={() => {
-              signIn({ name: "Guest", email: "" });
-              navigate(from, { replace: true });
-            }}
+            onClick={handleGuestLogin}
           >
             Continue as Guest
           </button>
