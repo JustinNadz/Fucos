@@ -9,11 +9,13 @@ import {
   FiArrowRight,
   FiEye,
   FiEyeOff,
+  FiUser,
 } from "react-icons/fi";
 import { AuthContext } from "../contexts/AuthContext";
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const { signIn } = useContext(AuthContext);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,9 +34,11 @@ export default function SignInPage() {
       return;
     }
 
-    const userName = email.split("@")[0];
-    signIn({ name: userName, email: email.trim() });
-    navigate(from, { replace: true });
+    // Simulate registration
+    setNotification("You are registered! Please sign in.");
+    setTimeout(() => {
+      navigate("/sign-in");
+    }, 3000);
   }
 
   return (
@@ -92,14 +96,26 @@ export default function SignInPage() {
       {/* Right: Auth Card */}
       <div className="auth-card-wrap-dark">
         <form className="auth-card-dark" onSubmit={submit}>
-          <h2>Welcome back</h2>
-          <p className="auth-subtitle">Continue your focus journey</p>
+          <h2>Create account</h2>
+          <p className="auth-subtitle">Start your focus journey today</p>
 
           {notification && (
             <div className="notification text-green-500 mb-4">
               {notification}
             </div>
           )}
+
+          <label className="auth-label">Full Name</label>
+          <div className="input-with-icon">
+            <FiUser className="input-icon" />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="John Doe"
+              className="auth-input"
+              required
+            />
+          </div>
 
           <label className="auth-label">Email address</label>
           <div className="input-with-icon">
@@ -134,18 +150,8 @@ export default function SignInPage() {
             </button>
           </div>
 
-          <div className="auth-options">
-            <label className="checkbox-label">
-              <input type="checkbox" className="checkbox" />
-              Remember me
-            </label>
-            <a href="#" className="forgot-link">
-              Forgot password?
-            </a>
-          </div>
-
           <button className="auth-submit" type="submit">
-            Sign in <FiArrowRight />
+            Create Account <FiArrowRight />
           </button>
 
           <div className="auth-divider">Or</div>
@@ -162,13 +168,13 @@ export default function SignInPage() {
           </button>
 
           <p className="auth-footer">
-            Don't have an account?{" "}
+            Already have an account?{" "}
             <button
               type="button"
               className="auth-link-btn"
-              onClick={() => navigate("/sign-up")}
+              onClick={() => navigate("/sign-in")}
             >
-              Sign up
+              Sign in
             </button>
           </p>
         </form>
