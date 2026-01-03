@@ -8,6 +8,7 @@ import FocusSession from "./components/FocusSession";
 import Statistics from "./components/Statistics";
 import Settings from "./components/Settings";
 import SignInPage from "./components/SignInPage";
+import SignUpPage from "./components/SignUpPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function Layout({ children, title }) {
@@ -44,7 +45,11 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/signin" element={<SignInPage />} />
+      <Route path="/sign-in" element={<SignInPage />} />
+      <Route path="/sign-up" element={<SignUpPage />} />
+      {/* Backwards-compatible redirects for older links */}
+      <Route path="/signin" element={<Navigate to="/sign-in" replace />} />
+      <Route path="/signup" element={<Navigate to="/sign-up" replace />} />
       <Route
         path="/"
         element={

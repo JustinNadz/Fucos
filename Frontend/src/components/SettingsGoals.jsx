@@ -1,25 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
+import { FiCheck } from "react-icons/fi";
 
 const GOALS_KEY = "focus_goals_v1";
 
 export default function SettingsGoals() {
-  const [dailyGoal, setDailyGoal] = useState(120);
-  const [weeklyGoal, setWeeklyGoal] = useState(600);
-  const [focusMode, setFocusMode] = useState("balanced");
-
-  useEffect(() => {
+  const [dailyGoal, setDailyGoal] = useState(() => {
     try {
       const saved = localStorage.getItem(GOALS_KEY);
-      if (saved) {
-        const g = JSON.parse(saved);
-        setDailyGoal(g.dailyGoal || 120);
-        setWeeklyGoal(g.weeklyGoal || 600);
-        setFocusMode(g.focusMode || "balanced");
-      }
-    } catch (e) {
-      console.error("Error loading goals:", e);
+      if (saved) return JSON.parse(saved).dailyGoal || 120;
+    } catch (err) {
+      console.error("Error reading daily goal:", err);
     }
-  }, []);
+    return 120;
+  });
+
+  const [weeklyGoal, setWeeklyGoal] = useState(() => {
+    try {
+      const saved = localStorage.getItem(GOALS_KEY);
+      if (saved) return JSON.parse(saved).weeklyGoal || 600;
+    } catch (err) {
+      console.error("Error reading weekly goal:", err);
+    }
+    return 600;
+  });
+
+  const [focusMode, setFocusMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem(GOALS_KEY);
+      if (saved) return JSON.parse(saved).focusMode || "balanced";
+    } catch (err) {
+      console.error("Error reading focus mode:", err);
+    }
+    return "balanced";
+  });
+
+  const [notification, setNotification] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeout = useRef(null);
 
   function save() {
     try {
@@ -27,7 +44,12 @@ export default function SettingsGoals() {
         GOALS_KEY,
         JSON.stringify({ dailyGoal, weeklyGoal, focusMode })
       );
-      alert("Goals saved!");
+
+      // Show notification
+      setNotification("Goals saved successfully!");
+      setShowToast(true);
+      clearTimeout(toastTimeout.current);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
     } catch (e) {
       console.error("Error loading goals:", e);
     }
@@ -91,13 +113,23 @@ export default function SettingsGoals() {
 
         <div className="flex justify-end pt-6 border-t border-gray-700">
           <button
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium transition-colors hover:bg-blue-700"
             onClick={save}
           >
             Save Goals
           </button>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium flex items-center gap-2">
+            <FiCheck />
+            {notification}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,11 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  FiPlay,
-  FiPause,
-  FiRotateCcw,
-  FiClock,
-  FiCoffee,
-} from "react-icons/fi";
+import React, { useEffect, useRef, useState, useContext } from "react";
+import { FiPlay, FiPause, FiRotateCcw, FiCheck } from "react-icons/fi";
+import { sessionsApi } from "../lib/api";
+import { AuthContext } from "../contexts/AuthContext";
 
 const SESSIONS_KEY = "focus_sessions_v1";
 
@@ -16,11 +12,16 @@ function msToTime(totalSeconds) {
 }
 
 export default function FocusSession() {
+  const { user } = useContext(AuthContext);
   const [task, setTask] = useState("");
   const [mode, setMode] = useState("pomodoro");
   const [minutes, setMinutes] = useState(25);
   const [running, setRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
+  const [inputsVisible, setInputsVisible] = useState(true);
+  const [notification, setNotification] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeout = useRef(null);
 
   const intervalRef = useRef(null);
 
@@ -30,20 +31,36 @@ export default function FocusSession() {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
 
-  function onComplete() {
-    try {
-      const raw = localStorage.getItem(SESSIONS_KEY) || "[]";
-      const sessions = JSON.parse(raw);
-      sessions.unshift({
-        id: Date.now(),
-        task: task || null,
-        minutes,
-        completedAt: new Date().toISOString(),
-      });
-      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-    } catch (e) {
-      console.error("Error saving session:", e);
+  async function onComplete() {
+    if (user?.isGuest) {
+      // Guest mode - use localStorage
+      try {
+        const raw = localStorage.getItem(SESSIONS_KEY) || "[]";
+        const sessions = JSON.parse(raw);
+        sessions.unshift({
+          id: Date.now(),
+          task: task || null,
+          minutes,
+          completedAt: new Date().toISOString(),
+        });
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+      } catch (e) {
+        console.error("Error saving session:", e);
+      }
+    } else if (user) {
+      // Authenticated - use API
+      try {
+        await sessionsApi.create(task || null, minutes);
+      } catch (e) {
+        console.error("Error saving session:", e);
+      }
     }
+
+    // Show completion notification
+    setNotification(`You completed a ${minutes} minute focus session!`);
+    setShowToast(true);
+    clearTimeout(toastTimeout.current);
+    toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
   }
 
   useEffect(() => {
@@ -65,117 +82,126 @@ export default function FocusSession() {
       }, 1000);
     }
     return () => clearInterval(intervalRef.current);
-  }, [running, onComplete]);
+  }, [running]);
 
   function startPause() {
-    if (running) setRunning(false);
-    else setRunning(true);
+    if (running) {
+      setRunning(false);
+    } else {
+      setRunning(true);
+      setInputsVisible(false);
+    }
   }
 
   function resetTimer() {
     setRunning(false);
     setSecondsLeft(minutes * 60);
+    setInputsVisible(true);
   }
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          What are you working on?
-        </label>
-        <input
-          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-6"
-          placeholder="Enter your task..."
-          value={task}
-          onChange={(e) => setTask(e.target.value)}
-        />
+      {inputsVisible && (
+        <div className="mb-8">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            What are you working on?
+          </label>
+          <input
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-6"
+            placeholder="Enter your task..."
+            value={task}
+            onChange={(e) => setTask(e.target.value)}
+          />
 
-        <div className="flex gap-2 mb-4">
-          <button
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              mode === "pomodoro"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-            onClick={() => {
-              setMode("pomodoro");
-              setMinutes(25);
-            }}
-          >
-            Pomodoro
-          </button>
-          <button
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              mode === "custom"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-            onClick={() => setMode("custom")}
-          >
-            Custom
-          </button>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            className={`px-3 py-2 rounded-lg font-medium transition-colors ${
-              minutes === 15 && mode !== "custom"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-            onClick={() => {
-              setMode("pomodoro");
-              setMinutes(15);
-            }}
-          >
-            15m
-          </button>
-          <button
-            className={`px-3 py-2 rounded-lg font-medium transition-colors ${
-              minutes === 25 && mode !== "custom"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-            onClick={() => {
-              setMode("pomodoro");
-              setMinutes(25);
-            }}
-          >
-            25m
-          </button>
-          <button
-            className={`px-3 py-2 rounded-lg font-medium transition-colors ${
-              minutes === 50 && mode !== "custom"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-            onClick={() => {
-              setMode("pomodoro");
-              setMinutes(50);
-            }}
-          >
-            50m
-          </button>
-        </div>
-
-        {mode === "custom" && (
-          <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Set custom duration (minutes)
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="999"
-              value={minutes}
-              onChange={(e) =>
-                setMinutes(Math.max(1, parseInt(e.target.value) || 1))
-              }
-              className="w-32 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="flex gap-2 mb-4">
+            <button
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                mode === "pomodoro"
+                  ? "bg-blue-600 text-[#fff]"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+              onClick={() => {
+                setMode("pomodoro");
+              }}
+            >
+              Pomodoro
+            </button>
+            <button
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                mode === "custom"
+                  ? "bg-blue-600 text-[#fff]"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+              onClick={() => {
+                setMode("custom");
+              }}
+            >
+              Custom
+            </button>
           </div>
-        )}
-      </div>
+
+          <div className="flex gap-2">
+            <button
+              className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                minutes === 15 && mode !== "custom"
+                  ? "bg-blue-600 text-[#fff]"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+              onClick={() => {
+                setMode("pomodoro");
+                setMinutes(15);
+              }}
+            >
+              15m
+            </button>
+            <button
+              className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                minutes === 25 && mode !== "custom"
+                  ? "bg-blue-600 text-[#fff]"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+              onClick={() => {
+                setMode("pomodoro");
+                setMinutes(25);
+              }}
+            >
+              25m
+            </button>
+            <button
+              className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                minutes === 50 && mode !== "custom"
+                  ? "bg-blue-600 text-[#fff]"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+              onClick={() => {
+                setMode("pomodoro");
+                setMinutes(50);
+              }}
+            >
+              50m
+            </button>
+          </div>
+
+          {mode === "custom" && (
+            <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Set custom duration (minutes)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="999"
+                value={minutes}
+                onChange={(e) => {
+                  const val = Math.max(1, parseInt(e.target.value) || 1);
+                  setMinutes(val);
+                }}
+                className="w-32 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="text-center">
         <div className="relative w-64 h-64 mx-auto mb-8 flex items-center justify-center">
@@ -214,7 +240,7 @@ export default function FocusSession() {
 
         <div className="flex gap-4 justify-center">
           <button
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors flex items-center gap-2"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-[#fff] font-semibold px-8 py-3 rounded-lg transition-colors flex items-center gap-2"
             onClick={startPause}
           >
             {running ? <FiPause /> : <FiPlay />}
@@ -229,6 +255,16 @@ export default function FocusSession() {
           </button>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium flex items-center gap-2">
+            <FiCheck />
+            {notification}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

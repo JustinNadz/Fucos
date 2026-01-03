@@ -46,10 +46,8 @@ export default function Settings() {
           {TABS.map((t) => (
             <div
               key={t.key}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors whitespace-nowrap ${
-                t.key === tab
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-300 hover:bg-gray-700 hover:text-white"
+              className={`settings-sidebar-tab flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
+                t.key === tab ? "active" : ""
               }`}
               onClick={() => setTab(t.key)}
             >
@@ -60,7 +58,9 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="flex-1 p-4 md:p-8 overflow-auto">{renderTab()}</div>
+      <div className="flex-1 p-4 md:p-8 overflow-auto settings-card-container">
+        {renderTab()}
+      </div>
     </div>
   );
 }

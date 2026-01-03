@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   FiPlus,
   FiTrash2,
@@ -8,43 +8,146 @@ import {
   FiSave,
   FiX,
 } from "react-icons/fi";
+import { tasksApi } from "../lib/api";
+import { AuthContext } from "../contexts/AuthContext";
+import socket from "../lib/socket";
 
 const STORAGE_KEY = "focus_tasks_v1";
 
 export default function TaskList() {
+  const { user } = useContext(AuthContext);
   const [tasks, setTasks] = useState([]);
   const [text, setText] = useState("");
+  const [loading, setLoading] = useState(true);
 
+  // Load tasks from API or localStorage (for guests)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setTasks(JSON.parse(raw));
-    } catch (e) {
-      console.error("Error loading tasks:", e);
+    async function loadTasks() {
+      if (user?.isGuest) {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) setTasks(JSON.parse(raw));
+        } catch (e) {
+          console.error("Error loading tasks:", e);
+        }
+      } else if (user) {
+        try {
+          const apiTasks = await tasksApi.list();
+          setTasks(apiTasks);
+        } catch (e) {
+          console.error("Error loading tasks:", e);
+        }
+      }
+      setLoading(false);
     }
-  }, []);
+    loadTasks();
+  }, [user]);
 
+  // Real-time socket listeners
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    } catch (e) {
-      console.error("Error saving tasks:", e);
-    }
-  }, [tasks]);
+    if (user?.isGuest) return;
 
-  function addTask() {
+    function onTaskCreated(task) {
+      setTasks((prev) => {
+        // Avoid duplicates
+        if (prev.some((t) => t.id === task.id)) return prev;
+        return [task, ...prev];
+      });
+    }
+
+    function onTaskUpdated(task) {
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)));
+    }
+
+    function onTaskDeleted({ id }) {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    }
+
+    socket.on("task:created", onTaskCreated);
+    socket.on("task:updated", onTaskUpdated);
+    socket.on("task:deleted", onTaskDeleted);
+
+    return () => {
+      socket.off("task:created", onTaskCreated);
+      socket.off("task:updated", onTaskUpdated);
+      socket.off("task:deleted", onTaskDeleted);
+    };
+  }, [user]);
+
+  // Save tasks to localStorage for guests
+  useEffect(() => {
+    if (user?.isGuest) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      } catch (e) {
+        console.error("Error saving tasks:", e);
+      }
+    }
+  }, [tasks, user]);
+
+  async function addTask() {
     if (!text.trim()) return;
-    const t = { id: Date.now(), text: text.trim(), done: false };
-    setTasks((s) => [t, ...s]);
+
+    if (user?.isGuest) {
+      const t = { id: Date.now().toString(), text: text.trim(), done: false };
+      setTasks((s) => [t, ...s]);
+    } else {
+      try {
+        // Optimistically add task for faster UI
+        setTasks((prev) => [
+          { id: "pending", text: text.trim(), done: false },
+          ...prev,
+        ]);
+        await tasksApi.create(text.trim());
+        // Force reload tasks for correct state
+        const apiTasks = await tasksApi.list();
+        setTasks(apiTasks);
+      } catch (e) {
+        console.error("Error creating task:", e);
+      }
+    }
     setText("");
   }
 
-  function removeTask(id) {
-    setTasks((s) => s.filter((t) => t.id !== id));
+  async function removeTask(id) {
+    if (user?.isGuest) {
+      setTasks((s) => s.filter((t) => t.id !== id));
+    } else {
+      try {
+        // Optimistically remove task for faster UI
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        await tasksApi.delete(id);
+        // Force reload tasks for correct state
+        const apiTasks = await tasksApi.list();
+        setTasks(apiTasks);
+      } catch (e) {
+        console.error("Error deleting task:", e);
+      }
+    }
   }
 
-  function toggleDone(id) {
-    setTasks((s) => s.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  async function toggleDone(id) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    if (user?.isGuest) {
+      setTasks((s) =>
+        s.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
+      );
+    } else {
+      try {
+        // Optimistically update done state
+        setTasks((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
+        );
+        await tasksApi.update(id, { done: !task.done });
+        // Force reload tasks for correct state
+        const apiTasks = await tasksApi.list();
+        setTasks(apiTasks);
+      } catch (e) {
+        console.error("Error updating task:", e);
+      }
+    }
   }
 
   const [editingId, setEditingId] = useState(null);
@@ -55,12 +158,35 @@ export default function TaskList() {
     setEditingText(t.text);
   }
 
-  function saveEdit(id) {
-    setTasks((s) =>
-      s.map((t) => (t.id === id ? { ...t, text: editingText } : t))
-    );
+  async function saveEdit(id) {
+    if (user?.isGuest) {
+      setTasks((s) =>
+        s.map((t) => (t.id === id ? { ...t, text: editingText } : t))
+      );
+    } else {
+      try {
+        // Optimistically update text
+        setTasks((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, text: editingText } : t))
+        );
+        await tasksApi.update(id, { text: editingText });
+        // Force reload tasks for correct state
+        const apiTasks = await tasksApi.list();
+        setTasks(apiTasks);
+      } catch (e) {
+        console.error("Error updating task:", e);
+      }
+    }
     setEditingId(null);
     setEditingText("");
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-400">Loading tasks...</p>
+      </div>
+    );
   }
 
   return (
@@ -75,7 +201,7 @@ export default function TaskList() {
             className="flex-1 min-w-0 px-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <button
-            className="bg-blue-500 hover:bg-blue-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer font-medium transition-colors flex items-center justify-center"
+            className="bg-blue-500 hover:bg-blue-600 text-[#fff] border-none px-6 py-3 rounded-lg cursor-pointer font-medium transition-colors flex items-center justify-center"
             onClick={addTask}
             title="Add task (or press Enter)"
           >
@@ -92,9 +218,9 @@ export default function TaskList() {
               {tasks.filter((t) => !t.done).length}
             </span>
           </div>
-          <div className="bg-green-600 px-4 py-2 rounded-lg">
-            <span className="text-gray-300 text-sm mr-2">DONE</span>
-            <span className="text-white font-semibold">
+          <div className="bg-blue-500 px-4 py-2 rounded-lg">
+            <span className="text-[#fff] text-sm mr-2">DONE</span>
+            <span className="text-[#fff] font-semibold">
               {tasks.filter((t) => t.done).length}
             </span>
           </div>

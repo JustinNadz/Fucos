@@ -1,27 +1,62 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
+import { FiCheck } from "react-icons/fi";
 
 const NOTIF_KEY = "focus_notifications_v1";
 
 export default function SettingsNotifications() {
-  const [sessionReminders, setSessionReminders] = useState(true);
-  const [breakReminders, setBreakReminders] = useState(true);
-  const [streakNotifications, setStreakNotifications] = useState(true);
-  const [emailSummaries, setEmailSummaries] = useState(false);
-  const [emailFreq, setEmailFreq] = useState("weekly");
-
-  useEffect(() => {
+  const [sessionReminders, setSessionReminders] = useState(() => {
     try {
       const saved = localStorage.getItem(NOTIF_KEY);
-      if (saved) {
-        const n = JSON.parse(saved);
-        setSessionReminders(n.sessionReminders !== false);
-        setBreakReminders(n.breakReminders !== false);
-        setStreakNotifications(n.streakNotifications !== false);
-        setEmailSummaries(n.emailSummaries || false);
-        setEmailFreq(n.emailFreq || "weekly");
-      }
-    } catch (e) {}
-  }, []);
+      if (saved) return JSON.parse(saved).sessionReminders !== false;
+    } catch (err) {
+      console.error("Error reading session reminders:", err);
+    }
+    return true;
+  });
+
+  const [breakReminders, setBreakReminders] = useState(() => {
+    try {
+      const saved = localStorage.getItem(NOTIF_KEY);
+      if (saved) return JSON.parse(saved).breakReminders !== false;
+    } catch (err) {
+      console.error("Error reading break reminders:", err);
+    }
+    return true;
+  });
+
+  const [streakNotifications, setStreakNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem(NOTIF_KEY);
+      if (saved) return JSON.parse(saved).streakNotifications !== false;
+    } catch (err) {
+      console.error("Error reading streak notifications:", err);
+    }
+    return true;
+  });
+
+  const [emailSummaries, setEmailSummaries] = useState(() => {
+    try {
+      const saved = localStorage.getItem(NOTIF_KEY);
+      if (saved) return JSON.parse(saved).emailSummaries || false;
+    } catch (err) {
+      console.error("Error reading email summaries:", err);
+    }
+    return false;
+  });
+
+  const [emailFreq, setEmailFreq] = useState(() => {
+    try {
+      const saved = localStorage.getItem(NOTIF_KEY);
+      if (saved) return JSON.parse(saved).emailFreq || "weekly";
+    } catch (err) {
+      console.error("Error reading email frequency:", err);
+    }
+    return "weekly";
+  });
+
+  const [notification, setNotification] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeout = useRef(null);
 
   function save() {
     try {
@@ -35,8 +70,15 @@ export default function SettingsNotifications() {
           emailFreq,
         })
       );
-      alert("Notification settings saved!");
-    } catch (e) {}
+
+      // Show notification
+      setNotification("Notification settings saved successfully!");
+      setShowToast(true);
+      clearTimeout(toastTimeout.current);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+    } catch (e) {
+      console.error("Error saving notification settings:", e);
+    }
   }
 
   return (
@@ -153,13 +195,23 @@ export default function SettingsNotifications() {
 
         <div className="flex justify-end pt-6 border-t border-gray-700">
           <button
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium transition-colors hover:bg-blue-700"
             onClick={save}
           >
             Save Settings
           </button>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium flex items-center gap-2">
+            <FiCheck />
+            {notification}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

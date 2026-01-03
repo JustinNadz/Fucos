@@ -1,66 +1,89 @@
-import React, { useState, useContext, useEffect } from "react";
-import { FiSave, FiCamera } from "react-icons/fi";
+import React, { useState, useContext, useRef } from "react";
+import { FiSave, FiCamera, FiCheck } from "react-icons/fi";
 import { AuthContext } from "../contexts/AuthContext";
 
 const PROFILE_KEY = "focus_profile_v1";
 
 export default function SettingsProfile() {
-  const { user } = useContext(AuthContext);
-  const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [bio, setBio] = useState("Passionate about productivity and deep work");
-  const [isSaving, setIsSaving] = useState(false);
+  const { user, updateUser } = useContext(AuthContext);
 
-  useEffect(() => {
+  const [name, setName] = useState(() => {
     try {
       const raw = localStorage.getItem(PROFILE_KEY);
       if (!raw) {
-        if (user) {
-          setName(user.name || "");
-          setEmail(user.email || "");
-        }
-        return;
+        return user?.name || "";
       }
-
       const saved = JSON.parse(raw);
-
-      if (user) {
-        // If user has a non-empty email, try per-user stored profile first
-        if (user.email) {
-          if (saved.profiles && saved.profiles[user.email]) {
-            const p = saved.profiles[user.email];
-            if (p.name) setName(p.name);
-            if (p.email) setEmail(p.email);
-            if (p.bio) setBio(p.bio);
-            return;
-          }
-
-          if (saved.email && saved.email === user.email) {
-            if (saved.name) setName(saved.name);
-            if (saved.bio) setBio(saved.bio);
-            return;
-          }
-
-          setName(user.name || "");
-          setEmail(user.email || "");
-          return;
+      if (user?.email) {
+        if (saved.profiles && saved.profiles[user.email]) {
+          return saved.profiles[user.email].name || user.name || "";
         }
-
-        // Signed in but no email (e.g. Guest) -> do not load other users' stored profile
-        setName(user.name || "");
-        setEmail(user.email || "");
-        return;
+        if (saved.email && saved.email === user.email)
+          return saved.name || user.name || "";
+        return user.name || "";
       }
-
-      if (saved.name) setName(saved.name);
-      if (saved.email) setEmail(saved.email);
-      if (saved.bio) setBio(saved.bio);
-    } catch (e) {
-      // ignore
+      return saved.name || user?.name || "";
+    } catch (err) {
+      console.error("Error reading profile name:", err);
+      return user?.name || "";
     }
-  }, [user]);
+  });
+
+  const [email, setEmail] = useState(() => {
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if (!raw) return user?.email || "";
+      const saved = JSON.parse(raw);
+      if (user?.email) {
+        if (saved.profiles && saved.profiles[user.email]) {
+          return saved.profiles[user.email].email || user.email || "";
+        }
+        if (saved.email && saved.email === user.email)
+          return saved.email || user.email || "";
+        return user.email || "";
+      }
+      return saved.email || user?.email || "";
+    } catch (err) {
+      console.error("Error reading profile email:", err);
+      return user?.email || "";
+    }
+  });
+
+  const [bio, setBio] = useState(() => {
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if (!raw) return "Passionate about productivity and deep work";
+      const saved = JSON.parse(raw);
+      if (user?.email) {
+        if (saved.profiles && saved.profiles[user.email]) {
+          return (
+            saved.profiles[user.email].bio ||
+            saved.bio ||
+            "Passionate about productivity and deep work"
+          );
+        }
+        if (saved.email && saved.email === user.email)
+          return saved.bio || "Passionate about productivity and deep work";
+      }
+      return saved.bio || "Passionate about productivity and deep work";
+    } catch (err) {
+      console.error("Error reading profile bio:", err);
+      return "Passionate about productivity and deep work";
+    }
+  });
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeout = useRef(null);
 
   function save() {
+    // Show notification immediately
+    setNotification("Profile details saved successfully!");
+    setShowToast(true);
+    clearTimeout(toastTimeout.current);
+    toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+
     setIsSaving(true);
     try {
       if (user && user.email) {
@@ -71,7 +94,7 @@ export default function SettingsProfile() {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.profiles) store = parsed;
           } catch (e) {
-            // ignore and overwrite
+            console.error("Error parsing profile store, overwriting:", e);
           }
         }
         store.profiles[user.email] = { name, email, bio };
@@ -80,14 +103,20 @@ export default function SettingsProfile() {
         localStorage.setItem(PROFILE_KEY, JSON.stringify({ name, email, bio }));
       }
 
+      // Update user context
+      if (updateUser) {
+        updateUser({ name, email });
+      }
+
       setTimeout(() => setIsSaving(false), 2000); // Visual feedback
     } catch (e) {
+      console.error("Error saving profile:", e);
       setIsSaving(false);
     }
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 max-w-4xl">
+    <div className="rounded-lg p-6 max-w-4xl">
       <div className="mb-8">
         <h3 className="text-2xl font-semibold text-white mb-2">
           Profile Information
@@ -156,10 +185,8 @@ export default function SettingsProfile() {
 
           <div className="pt-4">
             <button
-              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                isSaving
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
+              className={`px-6 py-3 bg-blue-600 text-white rounded-lg font-medium transition-colors hover:bg-blue-700 flex items-center gap-2${
+                isSaving ? " cursor-not-allowed opacity-70" : ""
               }`}
               onClick={save}
               disabled={isSaving}
@@ -175,6 +202,16 @@ export default function SettingsProfile() {
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium flex items-center gap-2">
+            <FiCheck />
+            {notification}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

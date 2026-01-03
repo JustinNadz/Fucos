@@ -399,6 +399,249 @@ body {
   font-size: 0.875rem;
 }
 
+/* Light mode overrides */
+.light-mode {
+  color-scheme: light;
+}
+
+.light-mode body,
+.light-mode .main-area,
+.light-mode .auth-page-dark {
+  background: #ffffff !important;
+  color: #0b1220 !important;
+}
+
+.light-mode .sidebar {
+  background: #f8fafc;
+  border-right: 1px solid #e6edf3;
+}
+
+.light-mode .brand {
+  color: #2563eb;
+}
+
+.light-mode .page-title,
+.light-mode .hero-desc,
+.light-mode .auth-subtitle,
+.light-mode .feature-sub,
+.light-mode .auth-label {
+  color: #0b1220;
+}
+
+.light-mode .header {
+  border-bottom: 1px solid #e6edf3;
+}
+
+.light-mode .primary-btn {
+  background: #2563eb;
+  color: #fff;
+}
+
+.light-mode .auth-card-dark,
+.light-mode .auth-input {
+  background: #fff !important;
+  color: #0b1220 !important;
+  border: 1px solid #e6edf3 !important;
+}
+
+.light-mode .auth-hero-dark {
+  background: linear-gradient(135deg, #f3f6fb 0%, #fff 100%);
+}
+
+.light-mode .tab-dark {
+  color: #475569;
+}
+
+.light-mode .tab-dark.active {
+  background: #e6eefc;
+  color: #0b1220;
+}
+
+/* Additional light mode overrides for comprehensive theming */
+.light-mode .side-btn {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.light-mode .side-btn:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.light-mode .side-btn.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.light-mode .signout-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.light-mode .signout-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.light-mode .auth-submit {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.light-mode .auth-submit:hover {
+  background: #2563eb;
+}
+
+.light-mode .auth-guest {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.light-mode .auth-guest:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.light-mode .auth-divider {
+  color: #64748b;
+}
+
+.light-mode .auth-divider::before,
+.light-mode .auth-divider::after {
+  background: #e2e8f0;
+}
+
+.light-mode .auth-footer {
+  color: #64748b;
+}
+
+.light-mode .auth-tabs-dark {
+  background: #f8fafc;
+}
+
+.light-mode .feature-dark .feature-icon {
+  background: #f1f5f9;
+  color: #3b82f6;
+}
+
+.light-mode .hero-features-dark .feature-title {
+  color: #1e293b;
+}
+
+.light-mode .hero-features-dark .feature-sub {
+  color: #64748b;
+}
+
+.light-mode .input-icon,
+.light-mode .password-toggle {
+  color: #94a3b8;
+}
+
+.light-mode .password-toggle:hover {
+  color: #64748b;
+}
+
+/* Light mode overrides for Tailwind classes used in components */
+.light-mode .bg-gray-800 {
+  background-color: #f8fafc !important;
+}
+
+.light-mode .bg-gray-700 {
+  background-color: #f1f5f9 !important;
+}
+
+.light-mode .bg-gray-600 {
+  background-color: #e2e8f0 !important;
+}
+
+.light-mode .border-gray-700 {
+  border-color: #e2e8f0 !important;
+}
+
+.light-mode .border-gray-600 {
+  border-color: #cbd5e1 !important;
+}
+
+.light-mode .border-gray-500 {
+  border-color: #94a3b8 !important;
+}
+
+.light-mode .text-white {
+  color: #1e293b !important;
+}
+
+.light-mode .text-gray-400 {
+  color: #64748b !important;
+}
+
+.light-mode .text-gray-300 {
+  color: #64748b !important;
+}
+
+.light-mode .placeholder-gray-400::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light-mode .text-gray-500 {
+  color: #64748b !important;
+}
+
+.light-mode .text-gray-600 {
+  color: #475569 !important;
+}
+
+/* Light mode hover color overrides */
+.light-mode .hover\:bg-gray-600:hover {
+  background-color: #cbd5e1 !important;
+}
+
+.light-mode .hover\:bg-blue-700:hover {
+  background-color: #1d4ed8 !important;
+}
+
+.light-mode .hover\:bg-gray-500\/10:hover {
+  background-color: rgba(100, 116, 139, 0.1) !important;
+}
+.light-mode .bg-blue-600 {
+  background-color: #2563eb !important;
+}
+
+/* Light mode overrides for settings sidebar tab and settings card container */
+.settings-sidebar-tab {
+  background: rgba(55, 65, 81, 0.5);
+  color: #d1d5db;
+  transition: background 0.2s, color 0.2s;
+}
+.settings-sidebar-tab:hover {
+  background: rgba(75, 85, 99, 0.7);
+}
+.settings-sidebar-tab.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.light-mode .settings-sidebar-tab {
+  background: transparent;
+  color: #334155;
+  transition: background 0.2s, color 0.2s;
+}
+.light-mode .settings-sidebar-tab:hover {
+  background: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+.light-mode .settings-sidebar-tab.active {
+  background: #2563eb !important;
+  color: #fff !important;
+}
+
+.light-mode .settings-card-container {
+  background: #f8fafc !important;
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.04);
+}
 .checkbox-label {
   display: flex;
   align-items: center;
@@ -489,4 +732,8 @@ body {
 
 .auth-link-btn:hover {
   text-decoration: underline;
+}
+
+button {
+  cursor: pointer;
 }

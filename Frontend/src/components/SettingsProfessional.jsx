@@ -1,34 +1,61 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { FiCheck } from "react-icons/fi";
 
 const PROF_KEY = "focus_professional_v1";
 const SKILLS_KEY = "focus_skills_v1";
 
 export default function SettingsProfessional() {
-  const [occupation, setOccupation] = useState("Software Developer");
-  const [industry, setIndustry] = useState("Technology");
-  const [experience, setExperience] = useState("intermediate");
-  const [skillText, setSkillText] = useState("");
-  const [skills, setSkills] = useState([]);
-  const [saved, setSaved] = useState(false);
+  const [occupation, setOccupation] = useState(() => {
+    try {
+      const prof = localStorage.getItem(PROF_KEY);
+      if (prof) return JSON.parse(prof).occupation || "Software Developer";
+    } catch (err) {
+      console.error("Error reading occupation:", err);
+    }
+    return "Software Developer";
+  });
 
-  useEffect(() => {
+  const [industry, setIndustry] = useState(() => {
+    try {
+      const prof = localStorage.getItem(PROF_KEY);
+      if (prof) return JSON.parse(prof).industry || "Technology";
+    } catch (err) {
+      console.error("Error reading industry:", err);
+    }
+    return "Technology";
+  });
+
+  const [experience, setExperience] = useState(() => {
+    try {
+      const prof = localStorage.getItem(PROF_KEY);
+      if (prof) return JSON.parse(prof).experience || "intermediate";
+    } catch (err) {
+      console.error("Error reading experience:", err);
+    }
+    return "intermediate";
+  });
+
+  const [skillText, setSkillText] = useState("");
+  const [skills, setSkills] = useState(() => {
     try {
       const raw = localStorage.getItem(SKILLS_KEY) || "[]";
-      setSkills(JSON.parse(raw));
-      const prof = localStorage.getItem(PROF_KEY);
-      if (prof) {
-        const p = JSON.parse(prof);
-        setOccupation(p.occupation || "Software Developer");
-        setIndustry(p.industry || "Technology");
-        setExperience(p.experience || "intermediate");
-      }
-    } catch (e) {}
-  }, []);
+      return JSON.parse(raw);
+    } catch (err) {
+      console.error("Error reading skills:", err);
+    }
+    return [];
+  });
+  const [saved, setSaved] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeout = useRef(null);
 
   useEffect(() => {
     try {
       localStorage.setItem(SKILLS_KEY, JSON.stringify(skills));
-    } catch (e) {}
+    } catch (err) {
+      console.error("Error saving skills:", err);
+    }
   }, [skills]);
 
   function addSkill() {
@@ -47,13 +74,19 @@ export default function SettingsProfessional() {
         PROF_KEY,
         JSON.stringify({ occupation, industry, experience })
       );
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (e) {}
+
+      // Show notification
+      setNotification("Professional details saved successfully!");
+      setShowToast(true);
+      clearTimeout(toastTimeout.current);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+    } catch (e) {
+      console.error("Error saving professional details:", e);
+    }
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 max-w-4xl">
+    <div className="rounded-lg p-6 max-w-4xl">
       <div className="mb-8">
         <h3 className="text-2xl font-semibold text-white mb-2">
           Professional Details
@@ -194,17 +227,24 @@ export default function SettingsProfessional() {
       </div>
 
       <div className="flex items-center justify-between pt-6 border-t border-gray-700">
-        {saved && (
-          <span className="text-green-400 text-sm">✅ Saved successfully!</span>
-        )}
         <div></div>
         <button
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium transition-colors hover:bg-blue-700"
           onClick={save}
         >
           Save Details
         </button>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium flex items-center gap-2">
+            <FiCheck />
+            {notification}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

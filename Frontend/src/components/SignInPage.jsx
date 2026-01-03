@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   FiBarChart2,
@@ -9,15 +9,20 @@ import {
   FiArrowRight,
   FiEye,
   FiEyeOff,
+  FiUser,
 } from "react-icons/fi";
 import { AuthContext } from "../contexts/AuthContext";
 
 export default function SignInPage() {
-  const { signIn } = useContext(AuthContext);
+  const { signIn, signUp, guestLogin } = useContext(AuthContext);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeout = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -25,16 +30,55 @@ export default function SignInPage() {
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  function submit(e) {
+  function handleTabChange(signUp) {
+    setIsSignUp(signUp);
+    setNotification(null);
+    setShowToast(false);
+    if (!signUp) setName("");
+  }
+
+  async function submit(e) {
     e.preventDefault();
     if (!emailRegex.test(email.trim())) {
       setNotification("Please enter a valid email address.");
+      setShowToast(true);
+      clearTimeout(toastTimeout.current);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
       return;
     }
 
-    const userName = email.split("@")[0];
-    signIn({ name: userName, email: email.trim() });
-    navigate(from, { replace: true });
+    if (isSignUp) {
+      try {
+        setNotification(null);
+        await signUp({ name: name.trim(), email: email.trim(), password });
+        setNotification("Account created! You are signed in.");
+        setShowToast(true);
+        clearTimeout(toastTimeout.current);
+        toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+        // After successful signup, user is authenticated via context - navigate
+        navigate(from, { replace: true });
+      } catch (err) {
+        setNotification(err.message || "Registration failed");
+        setShowToast(true);
+        clearTimeout(toastTimeout.current);
+        toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+      }
+      return;
+    }
+
+    try {
+      await signIn({ email: email.trim(), password });
+      setNotification("Signed in successfully!");
+      setShowToast(true);
+      clearTimeout(toastTimeout.current);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setNotification(err.message || "Sign in failed");
+      setShowToast(true);
+      clearTimeout(toastTimeout.current);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+    }
   }
 
   return (
@@ -91,13 +135,36 @@ export default function SignInPage() {
 
       {/* Right: Auth Card */}
       <div className="auth-card-wrap-dark">
-        <form className="auth-card-dark" onSubmit={submit}>
-          <h2>Welcome back</h2>
-          <p className="auth-subtitle">Continue your focus journey</p>
-
-          {notification && (
-            <div className="notification text-green-500 mb-4">
+        {/* Toast Notification */}
+        {showToast && (
+          <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="bg-blue-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium flex items-center gap-2">
+              <FiCheck className="mr-2" />
               {notification}
+            </div>
+          </div>
+        )}
+        <form className="auth-card-dark" onSubmit={submit}>
+          <h2>{isSignUp ? "Create account" : "Welcome back"}</h2>
+          <p className="auth-subtitle">
+            {isSignUp
+              ? "Start your focus journey today"
+              : "Continue your focus journey"}
+          </p>
+
+          {isSignUp && (
+            <div>
+              <label className="auth-label">Full Name</label>
+              <div className="input-with-icon">
+                <FiUser className="input-icon" />
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="John Doe"
+                  className="auth-input"
+                  required={isSignUp}
+                />
+              </div>
             </div>
           )}
 
@@ -134,18 +201,20 @@ export default function SignInPage() {
             </button>
           </div>
 
-          <div className="auth-options">
-            <label className="checkbox-label">
-              <input type="checkbox" className="checkbox" />
-              Remember me
-            </label>
-            <a href="#" className="forgot-link">
-              Forgot password?
-            </a>
+          <div style={{ visibility: !isSignUp ? "visible" : "hidden" }}>
+            <div className="auth-options">
+              <label className="checkbox-label">
+                <input type="checkbox" className="checkbox" />
+                Remember me
+              </label>
+              <a href="#" className="forgot-link">
+                Forgot password?
+              </a>
+            </div>
           </div>
 
           <button className="auth-submit" type="submit">
-            Sign in <FiArrowRight />
+            {isSignUp ? "Create Account" : "Sign in"} <FiArrowRight />
           </button>
 
           <div className="auth-divider">Or</div>
@@ -154,7 +223,7 @@ export default function SignInPage() {
             type="button"
             className="auth-guest"
             onClick={() => {
-              signIn({ name: "Guest", email: "" });
+              guestLogin();
               navigate(from, { replace: true });
             }}
           >
@@ -162,13 +231,13 @@ export default function SignInPage() {
           </button>
 
           <p className="auth-footer">
-            Don't have an account?{" "}
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
             <button
               type="button"
               className="auth-link-btn"
-              onClick={() => navigate("/sign-up")}
+              onClick={() => handleTabChange(!isSignUp)}
             >
-              Sign up
+              {isSignUp ? "Sign in" : "Sign up"}
             </button>
           </p>
         </form>

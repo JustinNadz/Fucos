@@ -1,27 +1,63 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { applyTheme } from "../lib/theme";
+import { FiCheck } from "react-icons/fi";
 
 const PREFS_KEY = "focus_preferences_v1";
 
 export default function SettingsPreferences() {
-  const [theme, setTheme] = useState("light");
-  const [notifications, setNotifications] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [workDuration, setWorkDuration] = useState(25);
-  const [breakDuration, setBreakDuration] = useState(5);
-
-  useEffect(() => {
+  const [theme, setTheme] = useState(() => {
     try {
       const saved = localStorage.getItem(PREFS_KEY);
-      if (saved) {
-        const p = JSON.parse(saved);
-        setTheme(p.theme || "light");
-        setNotifications(p.notifications !== false);
-        setSoundEnabled(p.soundEnabled !== false);
-        setWorkDuration(p.workDuration || 25);
-        setBreakDuration(p.breakDuration || 5);
-      }
-    } catch (e) {}
-  }, []);
+      if (saved) return JSON.parse(saved).theme || "light";
+    } catch (err) {
+      console.error("Error reading theme:", err);
+    }
+    return "light";
+  });
+
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PREFS_KEY);
+      if (saved) return JSON.parse(saved).notifications !== false;
+    } catch (err) {
+      console.error("Error reading notifications pref:", err);
+    }
+    return true;
+  });
+
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PREFS_KEY);
+      if (saved) return JSON.parse(saved).soundEnabled !== false;
+    } catch (err) {
+      console.error("Error reading sound setting:", err);
+    }
+    return true;
+  });
+
+  const [workDuration, setWorkDuration] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PREFS_KEY);
+      if (saved) return JSON.parse(saved).workDuration || 25;
+    } catch (err) {
+      console.error("Error reading work duration:", err);
+    }
+    return 25;
+  });
+
+  const [breakDuration, setBreakDuration] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PREFS_KEY);
+      if (saved) return JSON.parse(saved).breakDuration || 5;
+    } catch (err) {
+      console.error("Error reading break duration:", err);
+    }
+    return 5;
+  });
+
+  const [notification, setNotification] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeout = useRef(null);
 
   function save() {
     try {
@@ -35,12 +71,47 @@ export default function SettingsPreferences() {
           breakDuration,
         })
       );
-      alert("Preferences saved!");
-    } catch (e) {}
+      // apply theme immediately
+      try {
+        applyTheme(theme);
+      } catch (e) {
+        console.error("Error applying theme:", e);
+      }
+
+      // Show notification
+      setNotification("Preferences saved successfully!");
+      setShowToast(true);
+      clearTimeout(toastTimeout.current);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+    } catch (e) {
+      console.error("Error saving preferences:", e);
+    }
   }
 
+  useEffect(() => {
+    try {
+      applyTheme(theme);
+      // Auto-save theme preference
+      const saved = localStorage.getItem(PREFS_KEY);
+      const prefs = saved ? JSON.parse(saved) : {};
+      prefs.theme = theme;
+      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    } catch (e) {
+      console.error("Error applying/saving theme:", e);
+    }
+  }, [theme]);
+
+  // Apply theme on mount
+  useEffect(() => {
+    try {
+      applyTheme(theme);
+    } catch (e) {
+      console.error("Error applying theme on mount:", e);
+    }
+  }, []);
+
   return (
-    <div className="bg-gray-800 rounded-lg p-6 max-w-4xl">
+    <div className="rounded-lg p-6 max-w-4xl">
       <div className="mb-8">
         <h3 className="text-2xl font-semibold text-white mb-6">Preferences</h3>
       </div>
@@ -121,13 +192,23 @@ export default function SettingsPreferences() {
 
         <div className="flex justify-end pt-6 border-t border-gray-700">
           <button
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium transition-colors hover:bg-blue-700"
             onClick={save}
           >
             Save Changes
           </button>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium flex items-center gap-2">
+            <FiCheck />
+            {notification}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

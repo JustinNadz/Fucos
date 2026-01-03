@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   FiBarChart2,
@@ -20,6 +20,8 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeout = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,11 +33,17 @@ export default function SignUpPage() {
     e.preventDefault();
     if (!emailRegex.test(email.trim())) {
       setNotification("Please enter a valid email address.");
+      setShowToast(true);
+      clearTimeout(toastTimeout.current);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
       return;
     }
 
     // Simulate registration
     setNotification("You are registered! Please sign in.");
+    setShowToast(true);
+    clearTimeout(toastTimeout.current);
+    toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
     setTimeout(() => {
       navigate("/sign-in");
     }, 3000);
@@ -95,15 +103,18 @@ export default function SignUpPage() {
 
       {/* Right: Auth Card */}
       <div className="auth-card-wrap-dark">
+        {/* Toast Notification */}
+        {showToast && (
+          <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="bg-blue-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium flex items-center gap-2">
+              <FiCheck className="mr-2" />
+              {notification}
+            </div>
+          </div>
+        )}
         <form className="auth-card-dark" onSubmit={submit}>
           <h2>Create account</h2>
           <p className="auth-subtitle">Start your focus journey today</p>
-
-          {notification && (
-            <div className="notification text-green-500 mb-4">
-              {notification}
-            </div>
-          )}
 
           <label className="auth-label">Full Name</label>
           <div className="input-with-icon">
