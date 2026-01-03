@@ -10,6 +10,7 @@ import {
   FiEye,
   FiEyeOff,
   FiUser,
+  FiCheck,
 } from "react-icons/fi";
 import { AuthContext } from "../contexts/AuthContext";
 
